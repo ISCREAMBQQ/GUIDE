@@ -1,0 +1,139 @@
+[
+  {
+    "name": "Haw Par Villa",
+    "category": "major_parks",
+    "neighbors": {},
+    "reward": 1.58,
+    "lat": 1.282678,
+    "lng": 103.7818016,
+    "rating": 4.8,
+    "review_count": 990,
+    "neighbors_reward": {}
+  },
+  {
+    "name": "Zhongshan Park",
+    "category": "major_parks",
+    "neighbors": {},
+    "reward": 0.02,
+    "lat": 1.327232,
+    "lng": 103.8470572,
+    "rating": 4.3,
+    "review_count": 26,
+    "neighbors_reward": {}
+  },
+  {
+    "name": "Sembawang Park",
+    "category": "major_parks",
+    "neighbors": {
+      "Bukit Canberra": 2.961
+    },
+    "reward": 0.51,
+    "lat": 1.4613623,
+    "lng": 103.8361482,
+    "rating": 4.3,
+    "review_count": 843,
+    "neighbors_reward": {
+      "Bukit Canberra": {
+        "reward": 0.05,
+        "rating": 4.4,
+        "review_count": 60,
+        "adjusted_value": 2.91
+      }
+    }
+  },
+  {
+    "name": "Bukit Canberra",
+    "category": "major_parks",
+    "neighbors": {},
+    "reward": 0.05,
+    "lat": 1.4473521,
+    "lng": 103.8243536,
+    "rating": 4.4,
+    "review_count": 60,
+    "neighbors_reward": {}
+  },
+  {
+    "name": "Fort Canning Park",
+    "category": "major_parks",
+    "neighbors": {
+      "Dhoby Ghaut Green": 1.107
+    },
+    "reward": 0.41,
+    "lat": 1.2940165,
+    "lng": 103.8460084,
+    "rating": 5.0,
+    "review_count": 203,
+    "neighbors_reward": {
+      "Dhoby Ghaut Green": {
+        "reward": 0.4,
+        "rating": 4.8,
+        "review_count": 248,
+        "adjusted_value": 0.71
+      }
+    }
+  },
+  {
+    "name": "Labrador Nature Reserve",
+    "category": "major_parks",
+    "neighbors": {},
+    "reward": 0.16,
+    "lat": 1.2661508,
+    "lng": 103.802741,
+    "rating": 4.4,
+    "review_count": 194,
+    "neighbors_reward": {}
+  },
+  {
+    "name": "Dhoby Ghaut Green",
+    "category": "major_parks",
+    "neighbors": {
+      "Fort Canning Park": 1.966
+    },
+    "reward": 0.4,
+    "lat": 1.298621,
+    "lng": 103.8457402,
+    "rating": 4.8,
+    "review_count": 248,
+    "neighbors_reward": {
+      "Fort Canning Park": {
+        "reward": 0.41,
+        "rating": 5.0,
+        "review_count": 203,
+        "adjusted_value": 1.56
+      }
+    }
+  },
+  {
+    "name": "Punggol Waterway Park",
+    "category": "major_parks",
+    "neighbors": {},
+    "reward": 0.01,
+    "lat": 1.409359,
+    "lng": 103.9075073,
+    "rating": 4.4,
+    "review_count": 7,
+    "neighbors_reward": {}
+  },
+  {
+    "name": "Sengkang Riverside Park",
+    "category": "major_parks",
+    "neighbors": {},
+    "reward": 0.06,
+    "lat": 1.3980784,
+    "lng": 103.8841015,
+    "rating": 4.1,
+    "review_count": 297,
+    "neighbors_reward": {}
+  },
+  {
+    "name": "Sun Plaza Park",
+    "category": "major_parks",
+    "neighbors": {},
+    "reward": 0.38,
+    "lat": 1.3585829,
+    "lng": 103.943757,
+    "rating": 4.2,
+    "review_count": 940,
+    "neighbors_reward": {}
+  }
+]
