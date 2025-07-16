@@ -80,12 +80,13 @@ class SemanticSimilarityCalculator:
 
     def _load_spacy_model(self):
         """Loads the spaCy model, downloading if necessary."""
-        try:
-            return spacy.load("en_core_web_md")
-        except OSError:
-            print("Downloading spaCy model 'en_core_web_md'... (This may take a minute)")
-            spacy.cli.download("en_core_web_md")
-            return spacy.load("en_core_web_md")
+        return spacy.load("en_core_web_md")
+        # try:
+        #     return spacy.load("en_core_web_md")
+        # except OSError:
+        #     print("Downloading spaCy model 'en_core_web_md'... (This may take a minute)")
+        #     spacy.cli.download("en_core_web_md")
+        #     return spacy.load("en_core_web_md")
 
     def calculate(self, text1: str, text2: str) -> float:
         """
