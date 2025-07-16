@@ -161,13 +161,6 @@ def build_and_save_graph(
         json.dump(records, f, indent=2, ensure_ascii=False)
     print(f"  -> Successfully wrote graph data to {json_path}")
 
-    vis_obj = {"G": G_road, "gdf": locations_gdf, "viz_paths": viz_paths}
-    with open(vis_pickle, 'wb') as f:
-        pickle.dump(vis_obj, f)
-    print(f"  -> Visualization data saved to {vis_pickle}")
-    print(f"--- Build complete for '{output_name}' ---")
-
-
 # ==============================================================================
 #  Module 3: Main Execution Logic
 # ==============================================================================

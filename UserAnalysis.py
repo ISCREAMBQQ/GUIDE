@@ -1,10 +1,11 @@
+import json
 import spacy
 from collections import Counter
 import string
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from typing import Tuple, Dict, List, Set
+from typing import List, Set
 
 
 class KeywordExtractor:
@@ -58,6 +59,7 @@ class KeywordExtractor:
         word_counts = Counter(lemmatized_words)
         if category.lower() in word_counts:
             del word_counts[category.lower()]
+            # We want 9 keywords from frequency analysis, plus the category.
         top_words = [word for word, count in word_counts.most_common(num_keywords - 1)]
         return [category.capitalize()] + top_words
 
@@ -106,38 +108,30 @@ class SemanticSimilarityCalculator:
 
 
 if __name__ == '__main__':
-    # 1. Define the input data
-    reviews_by_location = {
-        "Sunny Bay Beach": ["beautiful sandy beach", "crystal clear water", "stunning sunset view"],
-        "Green Meadows Park": ["quiet peaceful park", "long walk", "huge green space", "relaxing afternoon"],
-        "City History Museum": ["vast collection of historical artifacts", "educational", "impressive building"]
-    }
-    STOPWORDS_FILE_PATH = 'stop_word.txt'
-    with open(STOPWORDS_FILE_PATH, 'w', encoding='utf-8') as f:
-        f.write("want\nfind\nplace\ngo\nsee\nexperience\nfeel\nlike\nnew\nbuilding\nmodern")
+    INPUT_JSON_PATH = 'Graph/GUIDE_037_updated.json'
+    OUTPUT_JSON_PATH = 'Graph/GUIDE_037.json'
+    STOPWORDS_FILE_PATH = 'ENGLISH_STOP.txt'
 
-        # 2. Instantiate the two main classes
+    # 4. Instantiate the extractor
     keyword_extractor = KeywordExtractor(stopwords_file_path=STOPWORDS_FILE_PATH)
-    similarity_calculator = SemanticSimilarityCalculator(stopwords_file_path=STOPWORDS_FILE_PATH)
 
-    # 3. Use the KeywordExtractor to process all locations first
-    print("\n--- Step 1: Extracting Keywords for all locations ---")
-    location_concepts = {}
-    for name, reviews in reviews_by_location.items():
-        keywords = keyword_extractor.extract(reviews, name)
-        location_concepts[name] = " ".join(keywords)
-        print(f" > {name} Concept: {location_concepts[name]}")
+    # 5. Load the JSON data
+    with open(INPUT_JSON_PATH, 'r', encoding='utf-8') as f:
+        locations_data = json.load(f)
 
-        # 4. Use the SimilarityCalculator to find the best match for a user's need
-    print("\n--- Step 2: Calculating Similarity for a User's Need ---")
-    user_needs = "I feel like learning something new about the past."
-    print(f"User Need: \"{user_needs}\"")
+    print("\nProcessing locations and extracting features...")
+    # 6. Process each location to add the 'feature' list
+    for location in locations_data:
+        if 'reviews' in location and 'category' in location:
+            reviews = location['reviews']
+            category = location['category']
+            # Extract 10 keywords (1 category + 9 from reviews)
+            features = keyword_extractor.extract(reviews, category, num_keywords=10)
+            location['feature'] = features
+            print(f"  - Extracted features for '{location['name']}': {features}")
 
-    scores = {}
-    for name, concept in location_concepts.items():
-        scores[name] = similarity_calculator.calculate(user_needs, concept)
-        print(f" > Similarity with '{name}': {scores[name]:.2%}")
+            # 7. Write the updated data to a new JSON file
+    with open(OUTPUT_JSON_PATH, 'w', encoding='utf-8') as f:
+        json.dump(locations_data, f, indent=4)
 
-        # 5. Determine and print the final recommendation
-    best_match = max(scores, key=scores.get)
-    print(f"\nFinal Recommendation: The best match is '{best_match}' (Score: {scores[best_match]:.2%})")
+    print(f"\nProcessing complete. Output saved to: {OUTPUT_JSON_PATH}")

@@ -8,7 +8,7 @@ import re
 
 from selenium.webdriver.support.wait import WebDriverWait
 
-from calculator import *
+from globalposition import *
 
 
 class GoogleMapsScraper:
