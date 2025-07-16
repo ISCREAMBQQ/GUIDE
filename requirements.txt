@@ -4,3 +4,4 @@ pandas
 networkx
 spacy
 nltk
+base64

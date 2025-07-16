@@ -1,3 +1,5 @@
+import base64
+
 import streamlit as st
 import json
 import folium
@@ -10,7 +12,7 @@ from path_algorithm import find_path
 
 
 # --- 1. Global Setup ---
-BASE_GRAPH_FILE = "Graph/GUIDE_037.json"
+BASE_GRAPH_FILE = "Graph/GUIDE_0371.json"
 STOPWORDS_FILE = "ENGLISH_STOP.txt"
 
 
@@ -58,13 +60,64 @@ def initialize_session_state():
         st.session_state.app_initialized = True
 
 
+# def find_best_waypoint(_poi_data, start_pt, end_pt, user_demand):
+#     """
+#     Finds the best 5 waypoint suggestions based on user interest and path proximity.
+#     1. Calculates the optimal path between the start and end points.
+#     2. Gathers all nodes on the path and their direct neighbors into a candidate set.
+#     3. Calculates the semantic similarity between the user's demand and the 'feature' of each candidate.
+#     4. Returns the top 5 most relevant candidates.
+#     """
+#     if not user_demand.strip():
+#         st.toast("Please describe your interests first to get suggestions.", icon="ℹ️")
+#         return []
+#
+#         # 1. Calculate the optimal path between start and end.
+#     path_result = find_path(BASE_GRAPH_FILE, start_pt, [], end_pt, "distance")
+#     base_path = path_result['path'] if path_result and 'path' in path_result else []
+#
+#     # Create a mapping from name to the full POI data for efficient lookups
+#     poi_map = {p['name']: p for p in _poi_data}
+#
+#     # 2. Build a candidate set S from the path and its neighbors.
+#     candidate_set = set(base_path)
+#     for poi_name in base_path:
+#         poi = poi_map.get(poi_name)
+#         if poi and 'neighbors' in poi and isinstance(poi['neighbors'], dict):
+#             candidate_set.update(poi['neighbors'].keys())
+#
+#             # If no path, use all points as candidates
+#     if not candidate_set:
+#         candidate_set = set(poi_map.keys())
+#
+#         # Filter out start, end, and already selected waypoints
+#     candidate_names = [name for name in candidate_set if name not in [start_pt, end_pt] + st.session_state.waypoints]
+#
+#     if not candidate_names:
+#         return []
+#
+#         # 3. Calculate similarity for each candidate using its 'feature' list.
+#     scores = {}
+#     for name in candidate_names:
+#         poi = poi_map.get(name)
+#         if poi and 'feature' in poi and poi['feature']:
+#             poi_concept = " ".join(poi['feature'])
+#             relevance_score = similarity_calculator.calculate(user_demand, poi_concept)
+#             scores[name] = relevance_score
+#
+#     if not scores:
+#         return []
+#
+#         # 4. Return the top 3 most similar locations.
+#     sorted_candidates = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+#     return [name for name, score in sorted_candidates[:min(len(sorted_candidates),5)]]
 def find_best_waypoint(_poi_data, start_pt, end_pt, user_demand):
     """
-    Finds the best 3 waypoint suggestions based on user interest and path proximity.
+    Finds the best 5 waypoint suggestions based on user interest and path proximity.
     1. Calculates the optimal path between the start and end points.
     2. Gathers all nodes on the path and their direct neighbors into a candidate set.
-    3. Calculates the semantic similarity between the user's demand and the 'feature' of each candidate.
-    4. Returns the top 3 most relevant candidates.
+    3. Calculates a combined score based on semantic similarity and the location's reward value.
+    4. Returns the top 5 most relevant candidates.
     """
     if not user_demand.strip():
         st.toast("Please describe your interests first to get suggestions.", icon="ℹ️")
@@ -94,21 +147,28 @@ def find_best_waypoint(_poi_data, start_pt, end_pt, user_demand):
     if not candidate_names:
         return []
 
-        # 3. Calculate similarity for each candidate using its 'feature' list.
+        # 3. Calculate a combined score for each candidate.
     scores = {}
     for name in candidate_names:
         poi = poi_map.get(name)
         if poi and 'feature' in poi and poi['feature']:
+            # Calculate relevance score based on user demand
             poi_concept = " ".join(poi['feature'])
             relevance_score = similarity_calculator.calculate(user_demand, poi_concept)
-            scores[name] = relevance_score
+
+            # Get the reward value, default to 0 if not present
+            reward_value = poi.get('reward', 0)
+
+            # Calculate the final score
+            final_score = relevance_score
+            scores[name] = final_score
 
     if not scores:
         return []
 
-        # 4. Return the top 3 most similar locations.
+        # 4. Return the top 5 locations with the highest scores.
     sorted_candidates = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    return [name for name, score in sorted_candidates[:3]]
+    return [name for name, score in sorted_candidates[:min(len(sorted_candidates), 5)]]
 
 
 def handle_route_change():
@@ -130,7 +190,9 @@ def generate_map_html(map_data, start_pt, end_pt, way_pts, calc_path=None):
             popup += f"<img src='{poi['photo_url']}' width='200'<br><br>"
         popup += f"<b>Category:</b> {poi.get('category', 'N/A')}<br>"
         if poi.get('feature'):
-            popup += f"<b>Features:</b> {', '.join(poi.get('feature', []))}<br>"
+            popup += f"<b>Features:</b> {', '.join(poi.get('feature', [])[1:])}<br>"
+        if poi.get('word_cloud'):
+            popup += f"<b>Word Cloud:</b><br><img src='{poi['word_cloud']}' width='200'><br><br>"
         popup += f"<b>Rating:</b> {poi.get('rating', 'N/A')}<br>"
         popup += f"<b>Popularity:</b> {poi.get('review_count', 'N/A')}<br>"
         popup += f"<b>Recommend Score:</b> {poi.get('reward', 'N/A')}<br>"
