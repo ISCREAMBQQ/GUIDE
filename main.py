@@ -12,7 +12,7 @@ from path_algorithm import find_path
 
 
 # --- 1. Global Setup ---
-BASE_GRAPH_FILE = "Graph/GUIDE_0371.json"
+BASE_GRAPH_FILE = "Graph/GUIDE.json"
 STOPWORDS_FILE = "ENGLISH_STOP.txt"
 
 

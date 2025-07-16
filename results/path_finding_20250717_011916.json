@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-07-17T01:19:16.276567",
+  "result": {
+    "success": true,
+    "path": [
+      "MacPherson",
+      "Paya Lebar",
+      "Aljunied",
+      "Kallang",
+      "Boon Tong Kee",
+      "Sakunthala's",
+      "Bras Basah",
+      "The Heeren",
+      "Orchard",
+      "Dhoby Ghaut",
+      "Jalan Besar",
+      "Boon Keng",
+      "Potong Pasir",
+      "Woodleigh",
+      "Serangoon"
+    ],
+    "total_distance": 62.4746,
+    "total_reward": 9.233749999999999,
+    "waypoint_order": [
+      "Paya Lebar",
+      "Orchard",
+      "Dhoby Ghaut"
+    ]
+  }
+}
