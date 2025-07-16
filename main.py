@@ -214,7 +214,7 @@ waypoints = st.sidebar.multiselect("Passing Points", [n for n in all_names if n 
 # --- UI for Waypoint Suggestion and Path Calculation ---
 col1, col2 = st.sidebar.columns(2)
 with col1:
-    if st.button("Get Suggest", use_container_width=True):
+    if st.button("Suggest", use_container_width=True):
         with st.spinner("Finding the best matches..."):
             suggestions = find_best_waypoint(pristine_graph_data, start_point, end_point, user_demand)
             st.session_state.suggestions = suggestions
