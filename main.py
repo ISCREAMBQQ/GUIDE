@@ -171,8 +171,6 @@ def generate_map_html(map_data, start_pt, end_pt, way_pts, calc_path=None):
             m.fit_bounds(route_fg.get_bounds(), padding=(30, 30))
 
     folium.LayerControl().add_to(m)
-
-    folium.LayerControl().add_to(m)
     return m.get_root().render()
 
 
@@ -180,13 +178,25 @@ def generate_map_html(map_data, start_pt, end_pt, way_pts, calc_path=None):
 st.set_page_config(layout="wide")
 st.title("GUIDE - Garden city's Unique and Intelligent Discovery Engine")
 
+# --- CHECKPOINTS START ---
+st.write("`CHECKPOINT 1`: App title rendered. Starting initial data load and setup.")
+
 # Load base data/tools and set up session state on first run
 pristine_graph_data = load_pristine_data(BASE_GRAPH_FILE)
+st.write(f"`CHECKPOINT 2`: Base data loaded from `{BASE_GRAPH_FILE}`. Initializing similarity calculator.")
+
 similarity_calculator = get_similarity_calculator()
+st.write("`CHECKPOINT 3`: Similarity calculator initialized (this may involve NLTK/spaCy downloads on first run).")
+
 initialize_session_state()
+st.write("`CHECKPOINT 4`: Session state initialized. Preparing UI components.")
 
 all_names = sorted([poi['name'] for poi in pristine_graph_data])
 poi_data_map = {poi['name']: poi for poi in pristine_graph_data}
+
+st.write("`CHECKPOINT 5`: All pre-computation and setup complete. Drawing main UI.")
+# --- CHECKPOINTS END ---
+
 
 # --- Sidebar UI ---
 st.sidebar.header("Plan Your Personalized Trip")
@@ -195,15 +205,11 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("##### 2. Select Your Route")
 
 start_default_idx = all_names.index("Merlion Park") if "Merlion Park" in all_names else 0
-end_default_idx = all_names.index(
-    "National University of Singapore") if "National University of Singapore" in all_names else 1
+end_default_idx = all_names.index("National University of Singapore") if "National University of Singapore" in all_names else 1
 
-start_point = st.sidebar.selectbox("Start", all_names, index=start_default_idx, key='start_point',
-                                   on_change=handle_route_change)
-end_point = st.sidebar.selectbox("End", all_names, index=end_default_idx, key='end_point',
-                                 on_change=handle_route_change)
-waypoints = st.sidebar.multiselect("Passing Points", [n for n in all_names if n not in [start_point, end_point]],
-                                   key='waypoints', default=st.session_state.waypoints)
+start_point = st.sidebar.selectbox("Start", all_names, index=start_default_idx, key='start_point', on_change=handle_route_change)
+end_point = st.sidebar.selectbox("End", all_names, index=end_default_idx, key='end_point', on_change=handle_route_change)
+waypoints = st.sidebar.multiselect("Passing Points", [n for n in all_names if n not in [start_point, end_point]], key='waypoints', default=st.session_state.waypoints)
 
 # --- UI for Waypoint Suggestion and Path Calculation ---
 col1, col2 = st.sidebar.columns(2)
@@ -231,12 +237,13 @@ if st.session_state.get('suggestions'):
             else:
                 st.toast(f"'{suggestion}' is already in your list.", icon="👍")
 
-            # --- Main Logic for Path Calculation ---
+# --- Main Logic for Path Calculation ---
 if calculate_button:
     with st.spinner("Calculating the optimal path..."):
-        # Pathfinding now uses the base file, as there's no personalized session file.
+        st.write("`CHECKPOINT 6`: 'Let's Go!' button clicked. Finding path...")
         path_result = find_path(BASE_GRAPH_FILE, start_point, waypoints, end_point, "distance")
         st.session_state.calc_path = path_result.get('path') if path_result else None
+        st.write("`CHECKPOINT 7`: Pathfinding complete. Result:", st.session_state.calc_path)
 
         if st.session_state.calc_path:
             st.sidebar.success(f"Path found! Visiting {len(st.session_state.calc_path)} locations.")
@@ -252,7 +259,8 @@ if calculate_button:
         else:
             st.sidebar.warning("Could not find a path. Try another combination.")
 
-    # --- Display Map ---
-map_html = generate_map_html(poi_data_map, start_point, end_point, st.session_state.waypoints,
-                             st.session_state.calc_path)
+# --- Display Map ---
+st.write("`CHECKPOINT 8`: Preparing to generate and render the Folium map.")
+map_html = generate_map_html(poi_data_map, start_point, end_point, st.session_state.waypoints, st.session_state.calc_path)
 st.components.v1.html(map_html, height=650)
+st.write("`CHECKPOINT 9`: Map rendering complete. App execution finished for this run.")
