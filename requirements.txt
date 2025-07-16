@@ -2,3 +2,4 @@ streamlit
 folium
 pandas
 networkx
+spacy
