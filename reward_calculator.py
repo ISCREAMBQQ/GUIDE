@@ -18,10 +18,10 @@ def calculate_reward(rating, review_count):
         return 0.0
 
         # (3) 计算判断的中间值
-    intermediate_value = ((rating - 4.0) * review_count)/500
+    intermediate_value = ((rating - 4.0) * review_count) / 500
 
     # (3) 根据中间值应用不同规则
-    if intermediate_value > 8:
+    if intermediate_value > 12:
         reward = 5.0
     elif 4 <= intermediate_value <= 12:
         reward = 4.0
