@@ -179,22 +179,22 @@ st.set_page_config(layout="wide")
 st.title("GUIDE - Garden city's Unique and Intelligent Discovery Engine")
 
 # --- CHECKPOINTS START ---
-st.write("`CHECKPOINT 1`: App title rendered. Starting initial data load and setup.")
+# st.write("`CHECKPOINT 1`: App title rendered. Starting initial data load and setup.")
 
 # Load base data/tools and set up session state on first run
 pristine_graph_data = load_pristine_data(BASE_GRAPH_FILE)
-st.write(f"`CHECKPOINT 2`: Base data loaded from `{BASE_GRAPH_FILE}`. Initializing similarity calculator.")
+# st.write(f"`CHECKPOINT 2`: Base data loaded from `{BASE_GRAPH_FILE}`. Initializing similarity calculator.")
 
 similarity_calculator = get_similarity_calculator()
-st.write("`CHECKPOINT 3`: Similarity calculator initialized (this may involve NLTK/spaCy downloads on first run).")
+# st.write("`CHECKPOINT 3`: Similarity calculator initialized (this may involve NLTK/spaCy downloads on first run).")
 
 initialize_session_state()
-st.write("`CHECKPOINT 4`: Session state initialized. Preparing UI components.")
+# st.write("`CHECKPOINT 4`: Session state initialized. Preparing UI components.")
 
 all_names = sorted([poi['name'] for poi in pristine_graph_data])
 poi_data_map = {poi['name']: poi for poi in pristine_graph_data}
 
-st.write("`CHECKPOINT 5`: All pre-computation and setup complete. Drawing main UI.")
+# st.write("`CHECKPOINT 5`: All pre-computation and setup complete. Drawing main UI.")
 # --- CHECKPOINTS END ---
 
 
@@ -214,7 +214,7 @@ waypoints = st.sidebar.multiselect("Passing Points", [n for n in all_names if n 
 # --- UI for Waypoint Suggestion and Path Calculation ---
 col1, col2 = st.sidebar.columns(2)
 with col1:
-    if st.button("Suggest Waypoints", use_container_width=True):
+    if st.button("Get Suggest", use_container_width=True):
         with st.spinner("Finding the best matches..."):
             suggestions = find_best_waypoint(pristine_graph_data, start_point, end_point, user_demand)
             st.session_state.suggestions = suggestions
@@ -240,10 +240,10 @@ if st.session_state.get('suggestions'):
 # --- Main Logic for Path Calculation ---
 if calculate_button:
     with st.spinner("Calculating the optimal path..."):
-        st.write("`CHECKPOINT 6`: 'Let's Go!' button clicked. Finding path...")
+        # st.write("`CHECKPOINT 6`: 'Let's Go!' button clicked. Finding path...")
         path_result = find_path(BASE_GRAPH_FILE, start_point, waypoints, end_point, "distance")
         st.session_state.calc_path = path_result.get('path') if path_result else None
-        st.write("`CHECKPOINT 7`: Pathfinding complete. Result:", st.session_state.calc_path)
+        # st.write("`CHECKPOINT 7`: Pathfinding complete. Result:", st.session_state.calc_path)
 
         if st.session_state.calc_path:
             st.sidebar.success(f"Path found! Visiting {len(st.session_state.calc_path)} locations.")
@@ -260,7 +260,7 @@ if calculate_button:
             st.sidebar.warning("Could not find a path. Try another combination.")
 
 # --- Display Map ---
-st.write("`CHECKPOINT 8`: Preparing to generate and render the Folium map.")
+# st.write("`CHECKPOINT 8`: Preparing to generate and render the Folium map.")
 map_html = generate_map_html(poi_data_map, start_point, end_point, st.session_state.waypoints, st.session_state.calc_path)
 st.components.v1.html(map_html, height=650)
-st.write("`CHECKPOINT 9`: Map rendering complete. App execution finished for this run.")
+# st.write("`CHECKPOINT 9`: Map rendering complete. App execution finished for this run.")
