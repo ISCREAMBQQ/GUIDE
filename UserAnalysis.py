@@ -1,67 +1,30 @@
 import json
 import os
-import re
-import string
-from collections import Counter
-from typing import List, Set, Tuple, Dict
 
-# --- FIX 1: Set Matplotlib backend ---
-# This line MUST come before importing pyplot
-import matplotlib
-
-matplotlib.use('Agg')  # Use a non-interactive backend suitable for servers
-import matplotlib.pyplot as plt
-# --- End of FIX 1 ---
-
-import nltk
 import spacy
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+from collections import Counter
+import string
+import nltk
 from nltk.tokenize import word_tokenize
-from wordcloud import WordCloud
-
-
-def create_and_save_wordcloud(word_counts: Dict[str, int], location_name: str, output_path: str):
-    """
-    Generates and saves a word cloud image from word frequency data.
-    """
-    if not word_counts:
-        print(f"  - No words to generate a cloud for '{location_name}'. Skipping.")
-        return
-
-    wc = WordCloud(
-        background_color='white',
-        width=800,
-        height=600,
-        max_words=100,
-        colormap='viridis',
-        contour_width=1,
-        contour_color='steelblue',
-        random_state=42
-    )
-    wc.generate_from_frequencies(word_counts)
-
-    plt.figure(figsize=(10, 7))
-    plt.imshow(wc, interpolation='bilinear')
-    plt.title(f'Keyword Cloud for: {location_name}', fontsize=16)
-    plt.axis('off')
-    plt.savefig(output_path, bbox_inches='tight')
-    plt.close()
+from nltk.corpus import stopwords
+from typing import List, Set
 
 
 class KeywordExtractor:
     """
     A class dedicated to extracting keywords from text documents.
+    It manages NLTK data and a custom stop words list.
     """
 
     def __init__(self, stopwords_file_path: str):
+        """Initializes the extractor by loading necessary NLTK data and stop words."""
         print("Initializing KeywordExtractor...")
         self._download_nltk_data()
         self.stop_words = self._load_stop_words(stopwords_file_path)
-        self.lemmatizer = WordNetLemmatizer()
         print("KeywordExtractor ready.")
 
     def _download_nltk_data(self):
+        """Downloads required NLTK packages if not already present."""
         required_packages = ['punkt', 'averaged_perceptron_tagger', 'wordnet', 'stopwords']
         for package in required_packages:
             try:
@@ -71,6 +34,7 @@ class KeywordExtractor:
                 nltk.download(package, quiet=True)
 
     def _load_stop_words(self, file_path: str) -> Set[str]:
+        """Loads default and custom stop words from a file."""
         stop_words = set(stopwords.words('english'))
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -80,76 +44,75 @@ class KeywordExtractor:
             print(f"Warning: Custom stop words file '{file_path}' not found. Using NLTK defaults.")
         return stop_words
 
-    def extract(self, reviews: List[str], category: str, num_keywords: int = 10) -> Tuple[List[str], Dict[str, int]]:
+    def extract(self, reviews: List[str], category: str, num_keywords: int = 10) -> List[str]:
+        """
+        Public interface to extract descriptive keywords from a list of reviews.
+        """
         full_text = ' '.join(reviews).lower()
+        from nltk.stem import WordNetLemmatizer
         tokens = word_tokenize(full_text)
         punct = set(string.punctuation)
         filtered_tokens = [w for w in tokens if w.isalpha() and w not in self.stop_words and w not in punct]
         pos_tags = nltk.pos_tag(filtered_tokens)
         target_pos = {'JJ', 'JJR', 'JJS', 'NN', 'NNS'}
         descriptive_words = [word for word, tag in pos_tags if tag in target_pos]
-        lemmatized_words = [self.lemmatizer.lemmatize(word) for word in descriptive_words]
-
+        lemmatizer = WordNetLemmatizer()
+        lemmatized_words = [lemmatizer.lemmatize(word) for word in descriptive_words]
         word_counts = Counter(lemmatized_words)
-        word_counts_for_keywords = word_counts.copy()
-        if category.lower() in word_counts_for_keywords:
-            del word_counts_for_keywords[category.lower()]
-
-        top_words = [word for word, count in word_counts_for_keywords.most_common(num_keywords - 1)]
-        final_keywords = [category.capitalize()] + top_words
-
-        return final_keywords, dict(word_counts)
+        if category.lower() in word_counts:
+            del word_counts[category.lower()]
+            # We want 9 keywords from frequency analysis, plus the category.
+        top_words = [word for word, count in word_counts.most_common(num_keywords - 1)]
+        return [category.capitalize()] + top_words
 
 
 class SemanticSimilarityCalculator:
     """
     A class dedicated to calculating semantic similarity between texts.
+    It manages the spaCy model and a stop words list for consistent processing.
     """
 
     def __init__(self, stopwords_file_path: str):
+        """Initializes the calculator by loading the spaCy model and stop words."""
         print("\nInitializing SemanticSimilarityCalculator...")
         self.nlp = self._load_spacy_model()
-        self.stop_words = self._load_stop_words(stopwords_file_path)  # Reusing load logic
+        # It also needs stop words to properly clean text before vector comparison
+        self.stop_words = KeywordExtractor(stopwords_file_path).stop_words
         print("SemanticSimilarityCalculator ready.")
-
-    def _load_stop_words(self, file_path: str) -> Set[str]:
-        """Loads default and custom stop words from a file."""
-        # This logic is duplicated from KeywordExtractor to make this class standalone
-        stop_words = set(stopwords.words('english'))
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                custom_words = {line.strip().lower() for line in f if line.strip()}
-            stop_words.update(custom_words)
-        except FileNotFoundError:
-            print(f"Warning: Custom stop words file '{file_path}' not found. Using NLTK defaults.")
-        return stop_words
 
     def _load_spacy_model(self):
         """
-        Loads the spaCy model from a local path, with improved robustness.
+        (核心修改)
+        从项目中指定的本地文件夹路径加载spaCy模型。
+        这种方法完全离线，非常可靠。
         """
-        # --- FIX 2: More robust path handling ---
-        try:
-            # This works when running as a script
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-        except NameError:
-            # This is a fallback for interactive environments (like notebooks)
-            # where __file__ is not defined. It assumes the script is run from project root.
-            script_dir = os.getcwd()
-            # --- End of FIX 2 ---
+        # 1. 获取当前文件(UserAnalysis.py)所在的目录
+        current_dir = os.path.dirname(os.path.abspath(__file__))
 
-        model_path = os.path.join(script_dir, 'models', 'en_core_web_md-3.7.1', 'en_core_web_md',
+        # 2. 构建模型的绝对路径 (相对于当前文件)
+        #    这里的路径是 '..', 'models', 'en_core_web_sm-3.7.1'
+        #    你需要根据你的实际文件夹名称进行调整
+        model_path = os.path.join(current_dir, 'models', 'en_core_web_md-3.7.1', 'en_core_web_md',
                                   'en_core_web_md-3.7.1')
-        print(f"Attempting to load spaCy model from: {model_path}")
+        # 如果你的models文件夹和UserAnalysis.py在同一级，路径应为：
+        # model_path = os.path.join(current_dir, 'models', 'en_core_web_sm-3.7.1')
 
+        print(f"Loading spaCy model from local path: {model_path}")
+
+        # 3. 检查路径是否存在，提供清晰的错误提示
         if not os.path.exists(model_path):
             raise FileNotFoundError(
-                f"SpaCy model folder not found at the expected path: {model_path}\n"
-                f"Please ensure the model is downloaded and placed in the correct project directory."
+                f"SpaCy模型文件夹未在指定路径找到: {model_path}\n"
+                f"请确认你已经下载并解压了模型，并将其放置在正确的项目目录中。"
             )
+
+        # 4. 直接从该路径加载模型
         return spacy.load(model_path)
 
     def calculate(self, text1: str, text2: str) -> float:
+        """
+        Public interface to calculate the semantic similarity between two texts.
+        """
         if not text1.strip() or not text2.strip():
             return 0.0
         doc1 = self.nlp(text1)
@@ -158,55 +121,39 @@ class SemanticSimilarityCalculator:
         tokens2 = [t.text for t in doc2 if t.text.lower() not in self.stop_words and not t.is_punct]
         doc1_no_stops = self.nlp(' '.join(tokens1))
         doc2_no_stops = self.nlp(' '.join(tokens2))
-
-        if not doc1_no_stops.vector.any() or not doc2_no_stops.vector.any():
+        if not doc1_no_stops.has_vector or doc1_no_stops.vector_norm == 0 or \
+                not doc2_no_stops.has_vector or doc2_no_stops.vector_norm == 0:
             return 0.0
-
         return doc1_no_stops.similarity(doc2_no_stops)
+
+    # --- Main Execution Example ---
 
 
 if __name__ == '__main__':
     INPUT_JSON_PATH = 'Graph/GUIDE_037_updated.json'
-    OUTPUT_JSON_PATH = 'Graph/GUIDE_0371_with_features.json'
+    OUTPUT_JSON_PATH = 'Graph/GUIDE_0371.json'
     STOPWORDS_FILE_PATH = 'ENGLISH_STOP.txt'
-    WORDCLOUD_DIR = 'wordclouds'
 
-    os.makedirs(WORDCLOUD_DIR, exist_ok=True)
-    print(f"Word cloud images will be saved in '{WORDCLOUD_DIR}/'")
-
+    # 4. Instantiate the extractor
     keyword_extractor = KeywordExtractor(stopwords_file_path=STOPWORDS_FILE_PATH)
 
-    try:
-        with open(INPUT_JSON_PATH, 'r', encoding='utf-8') as f:
-            locations_data = json.load(f)
-    except FileNotFoundError:
-        print(f"FATAL ERROR: Input JSON file not found at '{INPUT_JSON_PATH}'. Please check the path.")
-        exit()  # Exit the script if the main data file is missing
+    # 5. Load the JSON data
+    with open(INPUT_JSON_PATH, 'r', encoding='utf-8') as f:
+        locations_data = json.load(f)
 
-    print("\nProcessing locations, extracting features, and generating word clouds...")
+    print("\nProcessing locations and extracting features...")
+    # 6. Process each location to add the 'feature' list
     for location in locations_data:
-        if 'reviews' in location and 'category' in location and location['reviews']:
+        if 'reviews' in location and 'category' in location:
             reviews = location['reviews']
             category = location['category']
-            location_name = location['name']
-
-            features, word_counts = keyword_extractor.extract(reviews, category, num_keywords=10)
-
-            features.insert(0, location_name)
+            # Extract 10 keywords (1 category + 9 from reviews)
+            features = keyword_extractor.extract(reviews, category, num_keywords=10)
+            features.insert(0, location['name'])
             location['feature'] = features
+            print(f"  - Extracted features for '{location['name']}': {features}")
 
-            clean_filename = re.sub(r'[\\/*?:"<>|]', "", location_name).replace(" ", "_")
-            image_filename = f"{clean_filename}.png"
-            image_path = os.path.join(WORDCLOUD_DIR, image_filename)
-
-            create_and_save_wordcloud(word_counts, location_name, image_path)
-
-            location['word_cloud'] = image_path
-
-            print(f"  - Processed '{location_name}': Features extracted, word cloud saved to '{image_path}'")
-        else:
-            print(f"  - Skipping '{location.get('name', 'N/A')}' due to missing reviews or category.")
-
+            # 7. Write the updated data to a new JSON file
     with open(OUTPUT_JSON_PATH, 'w', encoding='utf-8') as f:
         json.dump(locations_data, f, indent=4)
 
