@@ -5,3 +5,6 @@ networkx
 spacy
 nltk
 base64
+matplotlib
+os
+re
