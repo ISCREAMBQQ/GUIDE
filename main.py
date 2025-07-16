@@ -4,19 +4,14 @@ import folium
 from folium.plugins import MarkerCluster
 import os
 import networkx as nx
-
 # --- Import custom user analysis and pathfinding modules ---
-try:
-    from UserAnalysis import SemanticSimilarityCalculator
-    from path_algorithm import find_path
-except ImportError as e:
-    st.error(
-        f"Fatal Error: Could not import a required module ({e}). Ensure UserAnalysis.py and path_algorithm.py are present.")
-    st.stop()
+from UserAnalysis import SemanticSimilarityCalculator
+from path_algorithm import find_path
+
 
 # --- 1. Global Setup ---
 BASE_GRAPH_FILE = "Graph/GUIDE_037.json"
-STOPWORDS_FILE = "stopwords.txt"
+STOPWORDS_FILE = "ENGLISH_STOP.txt"
 
 
 # --- 2. Initialization and Cached Functions ---
