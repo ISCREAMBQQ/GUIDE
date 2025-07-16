@@ -3,3 +3,4 @@ folium
 pandas
 networkx
 spacy
+ntlk
