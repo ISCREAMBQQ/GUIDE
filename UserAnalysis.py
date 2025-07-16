@@ -1,4 +1,6 @@
 import json
+import os
+
 import spacy
 from collections import Counter
 import string
@@ -79,14 +81,32 @@ class SemanticSimilarityCalculator:
         print("SemanticSimilarityCalculator ready.")
 
     def _load_spacy_model(self):
-        """Loads the spaCy model, downloading if necessary."""
-        return spacy.load("en_core_web_md")
-        # try:
-        #     return spacy.load("en_core_web_md")
-        # except OSError:
-        #     print("Downloading spaCy model 'en_core_web_md'... (This may take a minute)")
-        #     spacy.cli.download("en_core_web_md")
-        #     return spacy.load("en_core_web_md")
+        """
+        (核心修改)
+        从项目中指定的本地文件夹路径加载spaCy模型。
+        这种方法完全离线，非常可靠。
+        """
+        # 1. 获取当前文件(UserAnalysis.py)所在的目录
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # 2. 构建模型的绝对路径 (相对于当前文件)
+        #    这里的路径是 '..', 'models', 'en_core_web_sm-3.7.1'
+        #    你需要根据你的实际文件夹名称进行调整
+        model_path = os.path.join(current_dir, 'models', 'en_core_web_md-3.7.1','en_core_web_md','en_core_web_md-3.7.1')
+        # 如果你的models文件夹和UserAnalysis.py在同一级，路径应为：
+        # model_path = os.path.join(current_dir, 'models', 'en_core_web_sm-3.7.1')
+
+        print(f"Loading spaCy model from local path: {model_path}")
+
+        # 3. 检查路径是否存在，提供清晰的错误提示
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(
+                f"SpaCy模型文件夹未在指定路径找到: {model_path}\n"
+                f"请确认你已经下载并解压了模型，并将其放置在正确的项目目录中。"
+            )
+
+        # 4. 直接从该路径加载模型
+        return spacy.load(model_path)
 
     def calculate(self, text1: str, text2: str) -> float:
         """

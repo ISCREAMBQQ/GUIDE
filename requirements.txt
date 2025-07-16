@@ -4,4 +4,3 @@ pandas
 networkx
 spacy
 nltk
-en-core-web-md
