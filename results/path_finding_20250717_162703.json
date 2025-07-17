@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-07-17T16:27:03.892621",
+  "result": {
+    "success": false,
+    "message": "Error: [Errno 2] No such file or directory: 'Graph/graph_with_updated_rewards_and_weights.json'",
+    "path": [],
+    "total_distance": Infinity,
+    "total_reward": 0,
+    "waypoint_order": []
+  }
+}

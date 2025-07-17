@@ -1,450 +1,3 @@
-# import json
-# import os
-# import heapq
-# import datetime
-# import random
-# from typing import Dict, List, Tuple
-# from dataclasses import dataclass
-# from itertools import permutations
-#
-#
-# @dataclass
-# class Node:
-#     """Node in the graph"""
-#     name: str
-#     neighbors: Dict[str, float]
-#     reward: int
-#
-#
-# class PathFinder:
-#     def __init__(self, graph_file: str):
-#         """Initialize path finder"""
-#         self.graph = {}
-#         self.all_nodes = set()
-#         self.shortest_path_cache = {}  # 缓存最短路径结果
-#         self.load_graph_from_file(graph_file)
-#
-#     def load_graph_from_file(self, filename: str):
-#         """Load graph data from JSON file, using neighbors_reward[neighbor]['adjusted_value'] as edge weight"""
-#         try:
-#             with open(filename, 'r', encoding='utf-8') as f:
-#                 data = json.load(f)
-#         except FileNotFoundError:
-#             print(f"File {filename} does not exist")
-#             raise
-#         except json.JSONDecodeError:
-#             print(f"JSON file format error: {filename}")
-#             raise
-#
-#         # Initialize graph
-#         self.graph = {}
-#         self.all_nodes = set()
-#
-#         # Collect all nodes
-#         if isinstance(data, list):
-#             for item in data:
-#                 if isinstance(item, dict) and 'name' in item:
-#                     node_name = item['name']
-#                     self.all_nodes.add(node_name)
-#                     # Add neighbors from the neighbors_reward field
-#                     for neighbor in item.get('neighbors_reward', {}):
-#                         self.all_nodes.add(neighbor)
-#
-#         # Create Node objects
-#         for node_name in self.all_nodes:
-#             self.graph[node_name] = Node(name=node_name, neighbors={}, reward=0)
-#
-#         # Fill data
-#         if isinstance(data, list):
-#             for item in data:
-#                 if isinstance(item, dict) and 'name' in item:
-#                     node_name = item['name']
-#                     if node_name in self.graph:
-#                         # Use neighbors_reward for distances
-#                         neighbors_reward = item.get('neighbors_reward', {})
-#                         neighbors = {}
-#                         for neighbor, info in neighbors_reward.items():
-#                             adjusted_value = info.get('adjusted_value', None)
-#                             if adjusted_value is not None:
-#                                 neighbors[neighbor] = adjusted_value
-#                         self.graph[node_name].neighbors = neighbors
-#                         # Use the reward field for node rewards
-#                         self.graph[node_name].reward = item.get('reward', 0)
-#
-#         # Make undirected - ensure bidirectional connections
-#         for node_name, node_obj in list(self.graph.items()):
-#             for neighbor_name, distance in list(node_obj.neighbors.items()):
-#                 if neighbor_name in self.graph:
-#                     if node_name not in self.graph[neighbor_name].neighbors:
-#                         self.graph[neighbor_name].neighbors[node_name] = distance
-#
-#     def dijkstra_shortest_path(self, start: str, end: str) -> Tuple[list, float]:
-#         """Dijkstra's algorithm for shortest path (non-negative weights only)"""
-#         if start not in self.graph or end not in self.graph:
-#             return [], float('inf')
-#         distances = {node: float('inf') for node in self.graph}
-#         predecessors = {node: None for node in self.graph}
-#         distances[start] = 0
-#         heap = [(0, start)]
-#         visited = set()
-#         while heap:
-#             current_dist, current_node = heapq.heappop(heap)
-#             if current_node in visited:
-#                 continue
-#             visited.add(current_node)
-#             if current_node == end:
-#                 break
-#             for neighbor, weight in self.graph[current_node].neighbors.items():
-#                 if neighbor in visited:
-#                     continue
-#                 new_dist = current_dist + weight
-#                 if new_dist < distances[neighbor]:
-#                     distances[neighbor] = new_dist
-#                     predecessors[neighbor] = current_node
-#                     heapq.heappush(heap, (new_dist, neighbor))
-#         if distances[end] == float('inf'):
-#             return [], float('inf')
-#         # Reconstruct path
-#         path = []
-#         current = end
-#         while current is not None:
-#             path.append(current)
-#             current = predecessors[current]
-#         path.reverse()
-#         return path, distances[end]
-#
-#     def shortest_path(self, start: str, end: str) -> Tuple[list, float]:
-#         """Use Dijkstra for shortest path query"""
-#         return self.dijkstra_shortest_path(start, end)
-#
-#     def calculate_total_distance(self, start: str, waypoint_order: List[str], end: str) -> float:
-#         """Calculate total distance for a given waypoint order"""
-#         total_distance = 0
-#         current_pos = start
-#
-#         for waypoint in waypoint_order:
-#             _, distance = self.shortest_path(current_pos, waypoint)
-#             if distance == float('inf'):
-#                 return float('inf')
-#             total_distance += distance
-#             current_pos = waypoint
-#
-#         # Add distance to end
-#         _, final_distance = self.shortest_path(current_pos, end)
-#         if final_distance == float('inf'):
-#             return float('inf')
-#
-#         return total_distance + final_distance
-#
-#     def greedy_nearest_neighbor(self, start: str, waypoints: List[str], end: str) -> Tuple[List[str], float]:
-#         """Basic greedy nearest neighbor algorithm"""
-#         remaining_waypoints = set(waypoints)
-#         current_pos = start
-#         waypoint_order = []
-#
-#         while remaining_waypoints:
-#             nearest_waypoint = None
-#             min_distance = float('inf')
-#
-#             for waypoint in remaining_waypoints:
-#                 _, distance = self.shortest_path(current_pos, waypoint)
-#                 if distance < min_distance:
-#                     min_distance = distance
-#                     nearest_waypoint = waypoint
-#
-#             if nearest_waypoint is None:
-#                 return [], float('inf')
-#
-#             waypoint_order.append(nearest_waypoint)
-#             remaining_waypoints.remove(nearest_waypoint)
-#             current_pos = nearest_waypoint
-#
-#         return waypoint_order, self.calculate_total_distance(start, waypoint_order, end)
-#
-#     def improved_greedy_with_end_consideration(self, start: str, waypoints: List[str], end: str) -> Tuple[
-#         List[str], float]:
-#         """Improved greedy algorithm that considers distance to end point"""
-#         remaining_waypoints = set(waypoints)
-#         current_pos = start
-#         waypoint_order = []
-#
-#         while remaining_waypoints:
-#             best_waypoint = None
-#             best_score = float('inf')
-#
-#             for waypoint in remaining_waypoints:
-#                 # Distance to current waypoint
-#                 _, distance_to_waypoint = self.shortest_path(current_pos, waypoint)
-#                 if distance_to_waypoint == float('inf'):
-#                     continue
-#
-#                 # Distance from waypoint to end
-#                 _, distance_to_end = self.shortest_path(waypoint, end)
-#                 if distance_to_end == float('inf'):
-#                     continue
-#
-#                 # Score: balance between distance to waypoint and distance to end
-#                 # Lower score is better
-#                 score = distance_to_waypoint + 0.3 * distance_to_end
-#
-#                 if score < best_score:
-#                     best_score = score
-#                     best_waypoint = waypoint
-#
-#             if best_waypoint is None:
-#                 return [], float('inf')
-#
-#             waypoint_order.append(best_waypoint)
-#             remaining_waypoints.remove(best_waypoint)
-#             current_pos = best_waypoint
-#
-#         return waypoint_order, self.calculate_total_distance(start, waypoint_order, end)
-#
-#     def multi_start_greedy(self, start: str, waypoints: List[str], end: str, num_starts: int = 5) -> Tuple[
-#         List[str], float]:
-#         """Multi-start greedy algorithm with different starting waypoints"""
-#         if len(waypoints) <= 1:
-#             return self.greedy_nearest_neighbor(start, waypoints, end)
-#
-#         best_order = []
-#         best_distance = float('inf')
-#
-#         # Try different starting waypoints
-#         for _ in range(min(num_starts, len(waypoints))):
-#             # Randomly select a starting waypoint
-#             start_waypoint = random.choice(list(waypoints))
-#             remaining_waypoints = set(waypoints) - {start_waypoint}
-#
-#             # Build path starting from this waypoint
-#             current_pos = start
-#             waypoint_order = [start_waypoint]
-#
-#             # Add remaining waypoints using greedy approach
-#             while remaining_waypoints:
-#                 nearest_waypoint = None
-#                 min_distance = float('inf')
-#
-#                 for waypoint in remaining_waypoints:
-#                     _, distance = self.shortest_path(current_pos, waypoint)
-#                     if distance < min_distance:
-#                         min_distance = distance
-#                         nearest_waypoint = waypoint
-#
-#                 if nearest_waypoint is None:
-#                     break
-#
-#                 waypoint_order.append(nearest_waypoint)
-#                 remaining_waypoints.remove(nearest_waypoint)
-#                 current_pos = nearest_waypoint
-#
-#             # Calculate total distance
-#             total_distance = self.calculate_total_distance(start, waypoint_order, end)
-#
-#             if total_distance < best_distance:
-#                 best_distance = total_distance
-#                 best_order = waypoint_order
-#
-#         return best_order, best_distance
-#
-#     def two_opt_optimization(self, waypoint_order: List[str], start: str, end: str) -> Tuple[List[str], float]:
-#         """2-opt optimization to improve waypoint order"""
-#         if len(waypoint_order) <= 2:
-#             return waypoint_order, self.calculate_total_distance(start, waypoint_order, end)
-#
-#         improved = True
-#         best_distance = self.calculate_total_distance(start, waypoint_order, end)
-#
-#         while improved:
-#             improved = False
-#
-#             for i in range(len(waypoint_order) - 1):
-#                 for j in range(i + 2, len(waypoint_order)):
-#                     # Try 2-opt swap
-#                     new_order = waypoint_order[:i + 1] + waypoint_order[i + 1:j + 1][::-1] + waypoint_order[j + 1:]
-#                     new_distance = self.calculate_total_distance(start, new_order, end)
-#
-#                     if new_distance < best_distance:
-#                         waypoint_order = new_order
-#                         best_distance = new_distance
-#                         improved = True
-#                         break
-#                 if improved:
-#                     break
-#
-#         return waypoint_order, best_distance
-#
-#     def find_path_with_waypoints(self, start: str, waypoints: List[str], end: str) -> Tuple[
-#         List[str], float, List[str]]:
-#         """Find path with waypoints using improved algorithms optimized for ≤10 waypoints"""
-#         if not waypoints:
-#             path, distance = self.shortest_path(start, end)
-#             return path, distance, []
-#
-#         # For small number of waypoints (≤4), try all permutations for exact solution
-#         if len(waypoints) <= 4:
-#             best_distance = float('inf')
-#             best_path = []
-#             best_order = []
-#
-#             for waypoint_order in permutations(waypoints):
-#                 current_distance = 0
-#                 current_path = []
-#                 current_pos = start
-#                 valid_path = True
-#
-#                 for waypoint in waypoint_order:
-#                     segment_path, segment_distance = self.shortest_path(current_pos, waypoint)
-#                     if not segment_path or segment_distance == float('inf'):
-#                         valid_path = False
-#                         break
-#
-#                     if current_path:
-#                         current_path.extend(segment_path[1:])
-#                     else:
-#                         current_path.extend(segment_path)
-#                     current_distance += segment_distance
-#                     current_pos = waypoint
-#
-#                 if not valid_path:
-#                     continue
-#
-#                 final_segment, final_distance = self.shortest_path(current_pos, end)
-#                 if not final_segment or final_distance == float('inf'):
-#                     continue
-#
-#                 current_path.extend(final_segment[1:])
-#                 current_distance += final_distance
-#
-#                 if current_distance < best_distance:
-#                     best_distance = current_distance
-#                     best_path = current_path
-#                     best_order = list(waypoint_order)
-#
-#             return best_path, best_distance, best_order
-#         else:
-#             # For 5-10 waypoints, use optimized algorithm combination
-#             best_order = []
-#             best_distance = float('inf')
-#
-#             # Optimized algorithm selection for 5-10 waypoints
-#             if len(waypoints) <= 7:
-#                 # For 5-7 waypoints: try basic greedy and improved greedy
-#                 algorithms = [
-#                     ("Basic Greedy", self.greedy_nearest_neighbor),
-#                     ("Improved Greedy", self.improved_greedy_with_end_consideration)
-#                 ]
-#             else:
-#                 # For 8-10 waypoints: add multi-start greedy with fewer iterations
-#                 algorithms = [
-#                     ("Basic Greedy", self.greedy_nearest_neighbor),
-#                     ("Improved Greedy", self.improved_greedy_with_end_consideration),
-#                     ("Multi-start Greedy (3)", lambda s, w, e: self.multi_start_greedy(s, w, e, 3))
-#                 ]
-#
-#             for name, algorithm in algorithms:
-#                 try:
-#                     order, distance = algorithm(start, waypoints, end)
-#                     if distance < best_distance:
-#                         best_distance = distance
-#                         best_order = order
-#                 except Exception as e:
-#                     print(f"Algorithm {name} failed: {e}")
-#                     continue
-#
-#             # Apply 2-opt optimization to the best result
-#             if best_order:
-#                 optimized_order, optimized_distance = self.two_opt_optimization(best_order, start, end)
-#                 if optimized_distance < best_distance:
-#                     best_order = optimized_order
-#                     best_distance = optimized_distance
-#
-#             # Build complete path
-#             if not best_order:
-#                 return [], float('inf'), []
-#
-#             complete_path = []
-#             current_pos = start
-#             total_distance = 0
-#
-#             for waypoint in best_order:
-#                 segment_path, segment_distance = self.shortest_path(current_pos, waypoint)
-#                 if not segment_path:
-#                     return [], float('inf'), []
-#
-#                 if complete_path:
-#                     complete_path.extend(segment_path[1:])
-#                 else:
-#                     complete_path.extend(segment_path)
-#                 total_distance += segment_distance
-#                 current_pos = waypoint
-#
-#             final_segment, final_distance = self.shortest_path(current_pos, end)
-#             if not final_segment:
-#                 return [], float('inf'), []
-#
-#             complete_path.extend(final_segment[1:])
-#             total_distance += final_distance
-#
-#             return complete_path, total_distance, best_order
-#
-#
-# def find_path(graph_file: str, start: str, waypoints: List[str], end: str, objective: str = "distance") -> Dict:
-#     """Main function to find path with waypoints
-#
-#     Args:
-#         graph_file: Path to the JSON graph file
-#         start: Starting node name
-#         waypoints: List of waypoint node names
-#         end: Ending node name
-#         objective: Optimization objective - "distance" or "reward"
-#     """
-#     try:
-#         path_finder = PathFinder(graph_file)
-#
-#         if objective == "reward":
-#             # For reward maximization, we need to implement a different algorithm
-#             # For now, we'll use the same distance-based algorithm but calculate total reward
-#             path, total_distance, waypoint_order = path_finder.find_path_with_waypoints(start, waypoints, end)
-#         else:
-#             # Default distance minimization
-#             path, total_distance, waypoint_order = path_finder.find_path_with_waypoints(start, waypoints, end)
-#
-#         if not path:
-#             return {
-#                 "success": False,
-#                 "message": "No path found",
-#                 "path": [],
-#                 "total_distance": float('inf'),
-#                 "total_reward": 0,
-#                 "waypoint_order": []
-#             }
-#
-#         # Calculate total reward for the path
-#         total_reward = 0
-#         visited_nodes = set()
-#         for node_name in path:
-#             if node_name in path_finder.graph and node_name not in visited_nodes:
-#                 total_reward += path_finder.graph[node_name].reward
-#                 visited_nodes.add(node_name)
-#
-#         return {
-#             "success": True,
-#             "path": path,
-#             "total_distance": total_distance,
-#             "total_reward": total_reward,
-#             "waypoint_order": waypoint_order
-#         }
-#
-#     except Exception as e:
-#         return {
-#             "success": False,
-#             "message": f"Error: {str(e)}",
-#             "path": [],
-#             "total_distance": float('inf'),
-#             "total_reward": 0,
-#             "waypoint_order": []
-#         }
-
 import json
 import os
 import heapq
@@ -457,78 +10,62 @@ from itertools import permutations
 
 @dataclass
 class Node:
-    """Node in the graph"""
     name: str
-    neighbors: Dict[str, float]
+    neighbors: Dict[str, Dict[str, float]]
     reward: int
 
 
 class PathFinder:
     def __init__(self, graph_file: str):
-        """Initialize path finder"""
         self.graph = {}
         self.all_nodes = set()
-        self.shortest_path_cache = {}  # 缓存最短路径结果
+        self.shortest_path_cache = {}
         self.load_graph_from_file(graph_file)
 
     def load_graph_from_file(self, filename: str):
-        """Load graph data from JSON file, using neighbors_reward[neighbor]['adjusted_value'] as edge weight"""
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-        except FileNotFoundError:
-            print(f"File {filename} does not exist")
-            raise
-        except json.JSONDecodeError:
-            print(f"JSON file format error: {filename}")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error loading or parsing {filename}: {e}")
             raise
 
-            # Initialize graph
-        self.graph = {}
-        self.all_nodes = set()
+        self.all_nodes = {item['name'] for item in data if 'name' in item}
+        for item in data:
+            self.all_nodes.update(item.get('neighbors', {}).keys())
 
-        # Collect all nodes
-        if isinstance(data, list):
-            for item in data:
-                if isinstance(item, dict) and 'name' in item:
-                    node_name = item['name']
-                    self.all_nodes.add(node_name)
-                    # Add neighbors from the neighbors_reward field
-                    for neighbor in item.get('neighbors_reward', {}):
-                        self.all_nodes.add(neighbor)
-
-                        # Create Node objects
         for node_name in self.all_nodes:
             self.graph[node_name] = Node(name=node_name, neighbors={}, reward=0)
 
-            # Fill data
-        if isinstance(data, list):
-            for item in data:
-                if isinstance(item, dict) and 'name' in item:
-                    node_name = item['name']
-                    if node_name in self.graph:
-                        # Use neighbors_reward for distances
-                        neighbors_reward = item.get('neighbors_reward', {})
-                        neighbors = {}
-                        for neighbor, info in neighbors_reward.items():
-                            adjusted_value = info.get('adjusted_value', None)
-                            if adjusted_value is not None:
-                                neighbors[neighbor] = adjusted_value
-                        self.graph[node_name].neighbors = neighbors
-                        # Use the reward field for node rewards
-                        self.graph[node_name].reward = item.get('reward', 0)
+        for item in data:
+            node_name = item.get('name')
+            if node_name not in self.graph:
+                continue
 
-                        # Make undirected - ensure bidirectional connections
+            self.graph[node_name].reward = item.get('reward', 0)
+            actual_distances = item.get('neighbors', {})
+            reward_info = item.get('neighbors_reward', {})
+
+            for neighbor, distance in actual_distances.items():
+                if neighbor in reward_info and 'adjusted_value' in reward_info[neighbor]:
+                    self.graph[node_name].neighbors[neighbor] = {
+                        "actual_distance": distance,
+                        "adjusted_value": reward_info[neighbor]['adjusted_value']
+                    }
+
+                    # Ensure graph is undirected
         for node_name, node_obj in list(self.graph.items()):
-            for neighbor_name, distance in list(node_obj.neighbors.items()):
-                if neighbor_name in self.graph:
-                    if node_name not in self.graph[neighbor_name].neighbors:
-                        self.graph[neighbor_name].neighbors[node_name] = distance
+            for neighbor_name, weights in list(node_obj.neighbors.items()):
+                if neighbor_name in self.graph and node_name not in self.graph[neighbor_name].neighbors:
+                    self.graph[neighbor_name].neighbors[node_name] = weights
 
-    def dijkstra_shortest_path(self, start: str, end: str, avoid_nodes: set = None) -> Tuple[list, float]:
-        """Dijkstra's algorithm for shortest path, avoiding a given set of nodes."""
-        if start not in self.graph or end not in self.graph:
-            return [], float('inf')
+    def dijkstra_shortest_path(self, start: str, end: str, avoid_nodes: set = None,
+                               weight_key: str = 'adjusted_value') -> Tuple[list, float]:
+        cache_key = (start, end, frozenset(avoid_nodes) if avoid_nodes else None, weight_key)
+        if cache_key in self.shortest_path_cache:
+            return self.shortest_path_cache[cache_key]
+
+        if start not in self.graph or end not in self.graph: return [], float('inf')
 
         nodes_to_avoid = avoid_nodes if avoid_nodes is not None else set()
         distances = {node: float('inf') for node in self.graph}
@@ -539,21 +76,14 @@ class PathFinder:
 
         while heap:
             current_dist, current_node = heapq.heappop(heap)
-
-            if current_node in visited:
-                continue
+            if current_node in visited: continue
             visited.add(current_node)
+            if current_node == end: break
 
-            if current_node == end:
-                break
-
-            for neighbor, weight in self.graph[current_node].neighbors.items():
-                if neighbor in visited:
-                    continue
-
-                    # Do not visit a neighbor if it's in the avoid set, unless it's the destination
-                if neighbor in nodes_to_avoid and neighbor != end:
-                    continue
+            for neighbor, weights in self.graph[current_node].neighbors.items():
+                if neighbor in visited or (neighbor in nodes_to_avoid and neighbor != end): continue
+                weight = weights.get(weight_key)
+                if weight is None: continue
 
                 new_dist = current_dist + weight
                 if new_dist < distances[neighbor]:
@@ -561,390 +91,172 @@ class PathFinder:
                     predecessors[neighbor] = current_node
                     heapq.heappush(heap, (new_dist, neighbor))
 
-        if distances[end] == float('inf'):
-            return [], float('inf')
+        if distances[end] == float('inf'): return [], float('inf')
 
-            # Reconstruct path
         path = []
         current = end
         while current is not None:
             path.append(current)
             current = predecessors[current]
         path.reverse()
-        return path, distances[end]
 
-    def shortest_path(self, start: str, end: str, avoid_nodes: set = None) -> Tuple[list, float]:
-        """Use Dijkstra for shortest path query, with an option to avoid certain nodes."""
-        return self.dijkstra_shortest_path(start, end, avoid_nodes=avoid_nodes)
+        result = (path, distances[end])
+        self.shortest_path_cache[cache_key] = result
+        return result
 
-    def calculate_total_distance(self, start: str, waypoint_order: List[str], end: str) -> float:
-        """Calculate total distance for a given waypoint order"""
+    def shortest_path(self, start: str, end: str, avoid_nodes: set = None, weight_key: str = 'adjusted_value') -> Tuple[
+        list, float]:
+        return self.dijkstra_shortest_path(start, end, avoid_nodes=avoid_nodes, weight_key=weight_key)
+
+    def calculate_total_distance(self, start: str, waypoint_order: List[str], end: str, weight_key: str) -> float:
         total_distance = 0
         current_pos = start
-
-        for waypoint in waypoint_order:
-            _, distance = self.shortest_path(current_pos, waypoint)
-            if distance == float('inf'):
-                return float('inf')
+        path = [start] + waypoint_order + [end]
+        for i in range(len(path) - 1):
+            _, distance = self.shortest_path(path[i], path[i + 1], weight_key=weight_key)
+            if distance == float('inf'): return float('inf')
             total_distance += distance
-            current_pos = waypoint
+        return total_distance
 
-            # Add distance to end
-        _, final_distance = self.shortest_path(current_pos, end)
-        if final_distance == float('inf'):
-            return float('inf')
+    def find_best_waypoint_order(self, start: str, waypoints: List[str], end: str) -> Tuple[List[str], float]:
+        """Finds the best order for a given list of waypoints using adjusted_value."""
+        if not waypoints:
+            cost = self.calculate_total_distance(start, [], end, 'adjusted_value')
+            return [], cost
 
-        return total_distance + final_distance
+        if len(waypoints) <= 7:  # Use permutations for smaller sets
+            best_order_tuple = min(permutations(waypoints),
+                                   key=lambda order: self.calculate_total_distance(start, list(order), end,
+                                                                                   'actual_distance'))
+            best_order = list(best_order_tuple)
+        else:  # Use heuristics for larger sets
+            # Using improved greedy + 2-opt as the heuristic
+            order, _ = self.improved_greedy_with_end_consideration(start, waypoints, end)
+            if not order: return [], float('inf')
+            best_order, _ = self.two_opt_optimization(order, start, end)
 
-    def greedy_nearest_neighbor(self, start: str, waypoints: List[str], end: str) -> Tuple[List[str], float]:
-        """Basic greedy nearest neighbor algorithm"""
-        remaining_waypoints = set(waypoints)
-        current_pos = start
-        waypoint_order = []
-
-        while remaining_waypoints:
-            nearest_waypoint = None
-            min_distance = float('inf')
-
-            for waypoint in remaining_waypoints:
-                _, distance = self.shortest_path(current_pos, waypoint)
-                if distance < min_distance:
-                    min_distance = distance
-                    nearest_waypoint = waypoint
-
-            if nearest_waypoint is None:
-                return [], float('inf')
-
-            waypoint_order.append(nearest_waypoint)
-            remaining_waypoints.remove(nearest_waypoint)
-            current_pos = nearest_waypoint
-
-        return waypoint_order, self.calculate_total_distance(start, waypoint_order, end)
+        final_cost = self.calculate_total_distance(start, best_order, end, 'actual_distance')
+        return best_order, final_cost
 
     def improved_greedy_with_end_consideration(self, start: str, waypoints: List[str], end: str) -> Tuple[
         List[str], float]:
-        """Improved greedy algorithm that considers distance to end point"""
-        remaining_waypoints = set(waypoints)
+        """Helper for ordering: Improved greedy using 'adjusted_value'."""
+        remaining = set(waypoints)
         current_pos = start
-        waypoint_order = []
-
-        while remaining_waypoints:
-            best_waypoint = None
-            best_score = float('inf')
-
-            for waypoint in remaining_waypoints:
-                # Distance to current waypoint
-                _, distance_to_waypoint = self.shortest_path(current_pos, waypoint)
-                if distance_to_waypoint == float('inf'):
-                    continue
-
-                    # Distance from waypoint to end
-                _, distance_to_end = self.shortest_path(waypoint, end)
-                if distance_to_end == float('inf'):
-                    continue
-
-                    # Score: balance between distance to waypoint and distance to end
-                # Lower score is better
-                score = distance_to_waypoint + 0.3 * distance_to_end
-
-                if score < best_score:
-                    best_score = score
-                    best_waypoint = waypoint
-
-            if best_waypoint is None:
-                return [], float('inf')
-
-            waypoint_order.append(best_waypoint)
-            remaining_waypoints.remove(best_waypoint)
-            current_pos = best_waypoint
-
-        return waypoint_order, self.calculate_total_distance(start, waypoint_order, end)
-
-    def multi_start_greedy(self, start: str, waypoints: List[str], end: str, num_starts: int = 5) -> Tuple[
-        List[str], float]:
-        """Multi-start greedy algorithm with different starting waypoints"""
-        if len(waypoints) <= 1:
-            return self.greedy_nearest_neighbor(start, waypoints, end)
-
-        best_order = []
-        best_distance = float('inf')
-
-        # Try different starting waypoints
-        for _ in range(min(num_starts, len(waypoints))):
-            # Randomly select a starting waypoint
-            start_waypoint = random.choice(list(waypoints))
-            remaining_waypoints = set(waypoints) - {start_waypoint}
-
-            # Build path starting from this waypoint
-            current_pos = start
-            waypoint_order = [start_waypoint]
-
-            # Add remaining waypoints using greedy approach
-            while remaining_waypoints:
-                nearest_waypoint = None
-                min_distance = float('inf')
-
-                for waypoint in remaining_waypoints:
-                    _, distance = self.shortest_path(current_pos, waypoint)
-                    if distance < min_distance:
-                        min_distance = distance
-                        nearest_waypoint = waypoint
-
-                if nearest_waypoint is None:
-                    break
-
-                waypoint_order.append(nearest_waypoint)
-                remaining_waypoints.remove(nearest_waypoint)
-                current_pos = nearest_waypoint
-
-                # Calculate total distance
-            total_distance = self.calculate_total_distance(start, waypoint_order, end)
-
-            if total_distance < best_distance:
-                best_distance = total_distance
-                best_order = waypoint_order
-
-        return best_order, best_distance
+        order = []
+        while remaining:
+            best_wp = min(remaining,
+                          key=lambda wp: self.shortest_path(current_pos, wp, weight_key='adjusted_value')[1] + 0.3 *
+                                         self.shortest_path(wp, end, weight_key='adjusted_value')[1], default=None)
+            if best_wp is None: return [], float('inf')
+            order.append(best_wp)
+            remaining.remove(best_wp)
+            current_pos = best_wp
+        cost = self.calculate_total_distance(start, order, end, 'adjusted_value')
+        return order, cost
 
     def two_opt_optimization(self, waypoint_order: List[str], start: str, end: str) -> Tuple[List[str], float]:
-        """2-opt optimization to improve waypoint order"""
-        if len(waypoint_order) <= 2:
-            return waypoint_order, self.calculate_total_distance(start, waypoint_order, end)
-
+        """Helper for ordering: 2-opt using 'adjusted_value'."""
+        best_cost = self.calculate_total_distance(start, waypoint_order, end, 'adjusted_value')
+        order = waypoint_order[:]
         improved = True
-        best_distance = self.calculate_total_distance(start, waypoint_order, end)
-
         while improved:
             improved = False
-
-            for i in range(len(waypoint_order) - 1):
-                for j in range(i + 2, len(waypoint_order)):
-                    # Try 2-opt swap
-                    new_order = waypoint_order[:i + 1] + waypoint_order[i + 1:j + 1][::-1] + waypoint_order[j + 1:]
-                    new_distance = self.calculate_total_distance(start, new_order, end)
-
-                    if new_distance < best_distance:
-                        waypoint_order = new_order
-                        best_distance = new_distance
-                        improved = True
-                        break
-                if improved:
+            for i, j in permutations(range(len(order)), 2):
+                if i >= j: continue
+                new_order = order[:i] + order[i:j + 1][::-1] + order[j + 1:]
+                new_cost = self.calculate_total_distance(start, new_order, end, 'adjusted_value')
+                if new_cost < best_cost:
+                    order = new_order
+                    best_cost = new_cost
+                    improved = True
                     break
+            if improved: break
+        return order, best_cost
 
-        return waypoint_order, best_distance
+    def find_path_with_waypoints(self, start: str, user_waypoints: List[str], end: str) -> Dict:
+        """
+        Implements the new 2-stage logic:
+        1. Discover reward-based path to define all nodes to visit.
+        2. Plan the final physical path through these nodes.
+        """
+        # --- 核心逻辑 Stage 1: 发现高价值节点 ---
+        # 执行一次基于'adjusted_value'的迪杰斯特拉，找出“奖励”路径
+        discovered_path_nodes, _ = self.shortest_path(start, end, weight_key='adjusted_value')
 
-    def find_path_with_waypoints(self, start: str, waypoints: List[str], end: str) -> Tuple[
-        List[str], float, List[str]]:
-        """Find path with waypoints, ensuring no nodes are repeated in the final path."""
-        if not waypoints:
-            path, distance = self.shortest_path(start, end)
-            return path, distance, []
+        if not discovered_path_nodes:
+            # 如果连奖励路径都找不到，直接返回失败
+            return {"path": [], "actual_distance": float('inf'), "waypoint_order": []}
 
-            # For small number of waypoints (<=4), try all permutations for exact solution
-        if len(waypoints) <= 4:
-            best_distance = float('inf')
-            best_path = []
-            best_order = []
+        # --- 核心逻辑 Stage 2: 整合并排序所有必经点 ---
+        # 将用户指定的waypoints和我们发现的节点合并，并去重
+        all_intermediate_nodes = set(user_waypoints) | set(discovered_path_nodes)
+        # 移除起点和终点，因为它们是路径的边界，而不是中间点
+        all_intermediate_nodes.discard(start)
+        all_intermediate_nodes.discard(end)
 
-            for waypoint_order_tuple in permutations(waypoints):
-                waypoint_order = list(waypoint_order_tuple)
+        final_waypoints = list(all_intermediate_nodes)
 
-                # Build path segment by segment, avoiding previously visited nodes
-                current_distance = 0
-                current_path = [start]
-                visited_nodes = {start}
-                current_pos = start
-                valid_path = True
+        # 为这个最终的节点列表，找到基于'adjusted_value'的最佳访问顺序
+        best_order, _ = self.find_best_waypoint_order(start, final_waypoints, end)
 
-                for waypoint in waypoint_order:
-                    # Avoid nodes already in our path (except for the current position)
-                    avoid_set = visited_nodes - {current_pos}
-                    segment_path, segment_distance = self.shortest_path(current_pos, waypoint, avoid_nodes=avoid_set)
+        # --- 核心逻辑 Stage 3: 生成最终物理路径 ---
+        # 使用 'actual_distance' 来连接 'best_order' 中的点，生成最终路径
+        complete_path = []
+        visited_nodes = set()
+        total_actual_distance = 0
+        path_segments = [start] + best_order + [end]
 
-                    if not segment_path:
-                        valid_path = False
-                        break
+        for i in range(len(path_segments) - 1):
+            current_pos, next_pos = path_segments[i], path_segments[i + 1]
+            if i == 0:
+                complete_path.append(current_pos)
+                visited_nodes.add(current_pos)
 
-                        # Add new nodes to path and visited set
-                    current_path.extend(segment_path[1:])
-                    visited_nodes.update(segment_path[1:])
-                    current_distance += segment_distance
-                    current_pos = waypoint
+            # 使用 'actual_distance' 生成无回头路的物理路径段
+            segment_path, segment_distance = self.shortest_path(
+                current_pos, next_pos, avoid_nodes=visited_nodes - {current_pos}, weight_key='actual_distance'
+            )
 
-                if not valid_path:
-                    continue
+            if not segment_path:
+                print(f"CRITICAL ERROR: Cannot find a non-repeating physical path from {current_pos} to {next_pos}.")
+                return {"path": [], "actual_distance": float('inf'), "waypoint_order": best_order}
 
-                    # Add final segment to the end node
-                avoid_set = visited_nodes - {current_pos}
-                final_segment, final_distance = self.shortest_path(current_pos, end, avoid_nodes=avoid_set)
-                if not final_segment:
-                    continue
+            new_nodes = segment_path[1:]
+            complete_path.extend(new_nodes)
+            visited_nodes.update(new_nodes)
+            total_actual_distance += segment_distance
 
-                current_path.extend(final_segment[1:])
-                current_distance += final_distance
+        final_adjusted_distance = self.calculate_total_distance(start, best_order, end, 'adjusted_value')
 
-                if current_distance < best_distance:
-                    best_distance = current_distance
-                    best_path = current_path
-                    best_order = waypoint_order
-
-            return best_path, best_distance, best_order
-        else:
-            # For 5-10 waypoints, use heuristic algorithms to find a good waypoint order first
-            best_order = []
-            best_distance = float('inf')
-
-            if len(waypoints) <= 7:
-                algorithms = [
-                    ("Basic Greedy", self.greedy_nearest_neighbor),
-                    ("Improved Greedy", self.improved_greedy_with_end_consideration)
-                ]
-            else:
-                algorithms = [
-                    ("Basic Greedy", self.greedy_nearest_neighbor),
-                    ("Improved Greedy", self.improved_greedy_with_end_consideration),
-                    ("Multi-start Greedy (3)", lambda s, w, e: self.multi_start_greedy(s, w, e, 3))
-                ]
-
-            for name, algorithm in algorithms:
-                try:
-                    order, distance = algorithm(start, waypoints, end)
-                    if distance < best_distance:
-                        best_distance = distance
-                        best_order = order
-                except Exception as e:
-                    print(f"Algorithm {name} failed: {e}")
-                    continue
-
-            if best_order:
-                optimized_order, _ = self.two_opt_optimization(best_order, start, end)
-                best_order = optimized_order
-
-            if not best_order:
-                return [], float('inf'), []
-
-                # Now, construct the real path from the heuristic order, applying the non-repeating node rule.
-            complete_path = [start]
-            visited_nodes = {start}
-            current_pos = start
-            total_distance = 0
-
-            for waypoint in best_order:
-                avoid_set = visited_nodes - {current_pos}
-                segment_path, segment_distance = self.shortest_path(current_pos, waypoint, avoid_nodes=avoid_set)
-
-                if not segment_path:
-                    # The order from the heuristic is impossible with the non-repeating rule
-                    return [], float('inf'), best_order
-
-                complete_path.extend(segment_path[1:])
-                visited_nodes.update(segment_path[1:])
-                total_distance += segment_distance
-                current_pos = waypoint
-
-                # Final segment to the end
-            avoid_set = visited_nodes - {current_pos}
-            final_segment, final_distance = self.shortest_path(current_pos, end, avoid_nodes=avoid_set)
-
-            if not final_segment:
-                return [], float('inf'), best_order
-
-            complete_path.extend(final_segment[1:])
-            total_distance += final_distance
-
-            return complete_path, total_distance, best_order
+        return {
+            "path": complete_path, "adjusted_distance": final_adjusted_distance,
+            "actual_distance": total_actual_distance, "waypoint_order": best_order
+        }
 
 
 def find_path(graph_file: str, start: str, waypoints: List[str], end: str, objective: str = "distance") -> Dict:
-    """Main function to find path with waypoints
-
-    Args:
-        graph_file: Path to the JSON graph file
-        start: Starting node name
-        waypoints: List of waypoint node names
-        end: Ending node name
-        objective: Optimization objective - "distance" or "reward"
-    """
     try:
         path_finder = PathFinder(graph_file)
-
-        if objective == "reward":
-            # For reward maximization, we need to implement a different algorithm
-            # For now, we'll use the same distance-based algorithm but calculate total reward
-            path, total_distance, waypoint_order = path_finder.find_path_with_waypoints(start, waypoints, end)
-        else:
-            # Default distance minimization
-            path, total_distance, waypoint_order = path_finder.find_path_with_waypoints(start, waypoints, end)
+        result = path_finder.find_path_with_waypoints(start, waypoints, end)
+        path = result.get("path")
 
         if not path:
-            return {
-                "success": False,
-                "message": "No path found",
-                "path": [],
-                "total_distance": float('inf'),
-                "total_reward": 0,
-                "waypoint_order": []
-            }
+            return {"success": False, "message": "No path found", **result}
 
-            # Calculate total reward for the path
-        total_reward = 0
-        visited_nodes = set()
-        for node_name in path:
-            if node_name in path_finder.graph and node_name not in visited_nodes:
-                total_reward += path_finder.graph[node_name].reward
-                visited_nodes.add(node_name)
+        total_reward = sum(
+            path_finder.graph[node_name].reward for node_name in set(path) if node_name in path_finder.graph)
 
         return {
-            "success": True,
-            "path": path,
-            "total_distance": total_distance,
-            "total_reward": total_reward,
-            "waypoint_order": waypoint_order
+            "success": True, "path": path,
+            "total_adjusted_distance": result.get("adjusted_distance"),
+            "total_actual_distance": result.get("actual_distance"),
+            "total_reward": total_reward, "waypoint_order": result.get("waypoint_order")
         }
-
     except Exception as e:
+        import traceback
         return {
-            "success": False,
-            "message": f"Error: {str(e)}",
-            "path": [],
-            "total_distance": float('inf'),
-            "total_reward": 0,
-            "waypoint_order": []
+            "success": False, "message": f"An unexpected error occurred: {str(e)}\n{traceback.format_exc()}",
+            "path": [], "total_adjusted_distance": float('inf'), "total_actual_distance": float('inf'),
+            "total_reward": 0, "waypoint_order": []
         }
-if __name__ == "__main__":
-    # 修改为新的输入文件名
-    json_file = "Graph/graph_with_updated_rewards_and_weights.json"
-
-    try:
-        # Test with multiple waypoints to see improvement
-        waypoints = ["Paya Lebar", "Dhoby Ghaut", "Orchard"]
-        result = find_path(json_file, "MacPherson", waypoints, "Serangoon", "distance")
-
-        # Save result
-        output_data = {
-            "timestamp": datetime.datetime.now().isoformat(),
-            "result": result
-        }
-
-        # Create results directory if it doesn't exist
-        results_dir = "results"
-        if not os.path.exists(results_dir):
-            os.makedirs(results_dir)
-
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = os.path.join(results_dir, f"path_finding_{timestamp}.json")
-
-        with open(output_filename, 'w', encoding='utf-8') as f:
-            json.dump(output_data, f, ensure_ascii=False, indent=2)
-
-        print(f"Results saved to: {output_filename}")
-
-        if result["success"]:
-            print(f"Path: {' -> '.join(result['path'])}")
-            print(f"Distance: {result['total_distance']:.2f}")
-            print(f"Waypoint order: {' -> '.join(result['waypoint_order'])}")
-        else:
-            print(f"Error: {result['message']}")
-
-    except Exception as e:
-        print(f"Runtime error: {str(e)}")

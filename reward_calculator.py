@@ -27,9 +27,9 @@ def calculate_reward(rating, review_count, busyness):
     intermediate_value = ((rating - 4.0) * review_count) * (1 - busyness/100) / 500
 
     # (3) 根据中间值应用不同规则
-    if intermediate_value > 12:
-        reward = 6
-    elif 4 <= intermediate_value <= 12:
+    if intermediate_value > 16:
+        reward = 5
+    elif 4 <= intermediate_value <= 16:
         reward = 4.0
     else:
         # (1) 剩余的按真实值处理，使用新公式

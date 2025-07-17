@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-07-17T16:27:36.561533",
+  "result": {
+    "success": false,
+    "message": "No path found",
+    "path": [],
+    "total_distance": Infinity,
+    "total_reward": 0,
+    "waypoint_order": []
+  }
+}
