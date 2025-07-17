@@ -79,7 +79,7 @@ for loc in all_locations:
         # (4) 如果出现负数，统一设为 -0.0001
         if new_adjusted_value < 0:
             print(neighbor_name)
-            new_adjusted_value = -0.00001
+            new_adjusted_value = -0.01
 
             # 更新 neighbor_reward 字典中的 adjusted_value
         if neighbor_name in loc['neighbors_reward']:
