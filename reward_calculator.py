@@ -28,7 +28,7 @@ def calculate_reward(rating, review_count, busyness):
 
     # (3) 根据中间值应用不同规则
     if intermediate_value > 12:
-        reward = 5.0
+        reward = 6
     elif 4 <= intermediate_value <= 12:
         reward = 4.0
     else:
