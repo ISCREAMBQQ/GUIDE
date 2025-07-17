@@ -28,7 +28,7 @@ def calculate_reward(rating, review_count, busyness):
 
     # (3) 根据中间值应用不同规则
     if intermediate_value > 16:
-        reward = 4.5
+        reward = 5
     elif 4 <= intermediate_value <= 16:
         reward = 4.0
     else:
@@ -74,7 +74,7 @@ for loc in all_locations:
 
         # (2) 根据新公式计算 adjusted_value (cost)
         # New Cost = distance - neighbor_reward + 3.8
-        new_adjusted_value = distance - neighbor_reward + 3.5
+        new_adjusted_value = distance - neighbor_reward + 3.8
 
         # (4) 如果出现负数，统一设为 -0.0001
         if new_adjusted_value < 0:
