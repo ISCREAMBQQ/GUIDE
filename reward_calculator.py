@@ -2,23 +2,29 @@ import json
 
 # --- 配置 ---
 # 假设你的原始文件名为这个
-INPUT_JSON_PATH = 'Graph/GUIDE_0371.json'
+INPUT_JSON_PATH = 'Graph/GUIDE_037_with_urls&busy.json'
 # 更新后的文件将保存到这里
-OUTPUT_JSON_PATH = 'Graph/GUIDE.json'
+OUTPUT_JSON_PATH = 'Graph/GUIDE038.json'
 
 
-def calculate_reward(rating, review_count):
+def calculate_reward(rating, review_count, busyness):
     """
     根据新的分层逻辑计算reward值。
     1. 如果评分或评论数为None，则奖励为0。
     2. 计算 (rating - 4.0) * review_count 的中间值。
     3. 根据中间值的大小决定最终reward。
     """
-    if rating is None or review_count is None:
+    if rating is None or review_count is None :
         return 0.0
 
+    if not busyness:
+        busyness = 0
+
+    if not isinstance(busyness,int):
+        busyness = float(busyness[:-1])
+
         # (3) 计算判断的中间值
-    intermediate_value = ((rating - 4.0) * review_count) / 500
+    intermediate_value = ((rating - 4.0) * review_count) * (1 - busyness/100) / 500
 
     # (3) 根据中间值应用不同规则
     if intermediate_value > 12:
@@ -50,7 +56,7 @@ except json.JSONDecodeError:
 updated_rewards = {}
 for loc in all_locations:
     # 使用更新后的reward计算函数
-    new_reward = calculate_reward(loc.get("rating"), loc.get("review_count"))
+    new_reward = calculate_reward(loc.get("rating"), loc.get("review_count"), loc.get('busyness'))
     loc['reward'] = new_reward
     updated_rewards[loc['name']] = new_reward
 

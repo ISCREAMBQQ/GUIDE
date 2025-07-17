@@ -12,7 +12,7 @@ from path_algorithm import find_path
 
 
 # --- 1. Global Setup ---
-BASE_GRAPH_FILE = "Graph/GUIDE.json"
+BASE_GRAPH_FILE = "Graph/GUIDE038.json"
 STOPWORDS_FILE = "ENGLISH_STOP.txt"
 
 
@@ -196,6 +196,7 @@ def generate_map_html(map_data, start_pt, end_pt, way_pts, calc_path=None):
         popup += f"<b>Rating:</b> {poi.get('rating', 'N/A')}<br>"
         popup += f"<b>Popularity:</b> {poi.get('review_count', 'N/A')}<br>"
         popup += f"<b>Recommend Score:</b> {poi.get('reward', 'N/A')}<br>"
+        popup += f"<b>Busyness:</b> {poi.get('busyness', 'N/A')}<br>"
         folium.Marker(location=[poi['lat'], poi['lng']], popup=popup, tooltip=name).add_to(marker_cluster)
 
     selection_fg = folium.FeatureGroup(name="Your Selections", show=True).add_to(m)
