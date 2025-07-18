@@ -130,8 +130,8 @@ class SemanticSimilarityCalculator:
 
 
 if __name__ == '__main__':
-    INPUT_JSON_PATH = 'Graph/GUIDE_037_updated.json'
-    OUTPUT_JSON_PATH = 'Graph/GUIDE_0371.json'
+    INPUT_JSON_PATH = 'Graph/GUIDE038.json'
+    OUTPUT_JSON_PATH = 'Graph/GUIDE038.json'
     STOPWORDS_FILE_PATH = 'ENGLISH_STOP.txt'
 
     # 4. Instantiate the extractor

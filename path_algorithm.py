@@ -149,119 +149,109 @@ class PathFinder:
         path.reverse()
         return path, distances[end]
 
-    def reorder_path_nodes(self, original_path: List[str], start: str, waypoints: List[str], end: str) -> Tuple[
-        List[str], float]:
+    def reorder_path_nodes(
+            self,
+            original_path: List[str],
+            start: str,
+            waypoints: List[str],
+            end: str
+    ) -> Tuple[List[str], float]:
         """
-        重新排序路径中的所有节点，使用实际距离避免回头路
+        在 original_path 的节点集合内部做 TSP-style 重排（首尾固定）。
+        若 actual_distance 图不连通或重排后距离更差，则返回原顺序。
 
-        Args:
-            original_path: 原始路径（可能包含回头路）
-            start: 起点
-            waypoints: 必经点列表
-            end: 终点
-
-        Returns:
-            重新排序后的路径和总距离
+        返回:
+            (path_in_new_order, total_actual_distance)
         """
-        # 收集路径中的所有唯一节点
-        path_nodes = set(original_path)
 
-        # 确保必经点都在路径节点中
-        required_nodes = set(waypoints) | {start, end}
-        path_nodes.update(required_nodes)
+        # ---------- 0. 工具函数 ----------
+        def seq_length(seq: List[str]) -> float:
+            return sum(dist[seq[i]][seq[i + 1]] for i in range(len(seq) - 1))
 
-        # 如果节点数量较少，尝试所有排列找最优解
-        if len(waypoints) <= 4:
-            best_path = []
-            best_distance = float('inf')
+        # ---------- 1. 去重得到节点集合 ----
+        unique_nodes: List[str] = []
+        seen = set()
+        for n in original_path:
+            if n not in seen:
+                unique_nodes.append(n)
+                seen.add(n)
 
-            for perm in permutations(waypoints):
-                # 构建完整路径：起点 -> 排列的必经点 -> 终点
-                current_distance = 0
-                current_path = [start]
-                current_pos = start
-                valid = True
+        # 确保 start / end 出现在首尾
+        if unique_nodes[0] != start:
+            unique_nodes.insert(0, start)
+        if unique_nodes[-1] != end:
+            unique_nodes.append(end)
 
-                # 经过所有必经点
-                for waypoint in perm:
-                    segment_path, segment_dist = self.dijkstra_shortest_path_actual(
-                        current_pos, waypoint, path_nodes
-                    )
-                    if not segment_path:
-                        valid = False
+        # 确保所有必经点在集合中
+        for w in waypoints:
+            if w not in seen:
+                unique_nodes.insert(-1, w)
+                seen.add(w)
+
+        # ---------- 2. 构造距离矩阵 -------
+        dist: dict[str, dict[str, float]] = {u: {} for u in unique_nodes}
+        graph_connected = True
+
+        for i, u in enumerate(unique_nodes):
+            for v in unique_nodes[i + 1:]:
+                # 用 actual_distance 跑 Dijkstra，不限制节点集合
+                _, d = self.dijkstra_shortest_path_actual(u, v)
+                if d == float('inf'):
+                    graph_connected = False
+                    break
+                dist[u][v] = dist[v][u] = d
+            if not graph_connected:
+                break
+
+        # 若实际图不连通 -> 保持原顺序
+        if not graph_connected:
+            # 尽量给出原顺序的实际距离；如果有缺失边就按 inf 处理
+            try:
+                orig_len = seq_length(unique_nodes)
+            except KeyError:
+                orig_len = float('inf')
+            return unique_nodes, orig_len
+
+        # ---------- 3. 原顺序的长度 --------
+        original_length = seq_length(unique_nodes)
+
+        # ---------- 4. 最近邻生成初解 ------
+        inner_nodes = [n for n in unique_nodes if n not in (start, end)]
+        remaining = set(inner_nodes)
+        order = [start]
+        cur = start
+        while remaining:
+            nxt = min(remaining, key=lambda x: dist[cur][x])
+            order.append(nxt)
+            remaining.remove(nxt)
+            cur = nxt
+        order.append(end)
+
+        # ---------- 5. 2-opt 优化 ----------
+        improved = True
+        while improved:
+            improved = False
+            for i in range(1, len(order) - 2):
+                for j in range(i + 1, len(order) - 1):
+                    # 交换 i..j 段后长度变化量
+                    delta = (dist[order[i - 1]][order[j]] +
+                             dist[order[i]][order[j + 1]] -
+                             dist[order[i - 1]][order[i]] -
+                             dist[order[j]][order[j + 1]])
+                    if delta < -1e-9:  # 有改进
+                        order[i:j + 1] = reversed(order[i:j + 1])
+                        improved = True
                         break
-                    current_path.extend(segment_path[1:])
-                    current_distance += segment_dist
-                    current_pos = waypoint
-
-                if not valid:
-                    continue
-
-                # 到达终点
-                final_path, final_dist = self.dijkstra_shortest_path_actual(
-                    current_pos, end, path_nodes
-                )
-                if not final_path:
-                    continue
-
-                current_path.extend(final_path[1:])
-                current_distance += final_dist
-
-                if current_distance < best_distance:
-                    best_distance = current_distance
-                    best_path = current_path
-
-            return best_path, best_distance
-
-        else:
-            # 对于较多必经点，使用启发式方法
-            # 使用最近邻算法，但基于实际距离
-            remaining_waypoints = set(waypoints)
-            current_pos = start
-            waypoint_order = []
-
-            while remaining_waypoints:
-                nearest_waypoint = None
-                min_distance = float('inf')
-
-                for waypoint in remaining_waypoints:
-                    _, distance = self.dijkstra_shortest_path_actual(
-                        current_pos, waypoint, path_nodes
-                    )
-                    if distance < min_distance:
-                        min_distance = distance
-                        nearest_waypoint = waypoint
-
-                if nearest_waypoint is None:
+                if improved:
                     break
 
-                waypoint_order.append(nearest_waypoint)
-                remaining_waypoints.remove(nearest_waypoint)
-                current_pos = nearest_waypoint
+        new_length = seq_length(order)
 
-            # 构建最终路径
-            final_path = [start]
-            current_pos = start
-            total_distance = 0
-
-            for waypoint in waypoint_order:
-                segment_path, segment_dist = self.dijkstra_shortest_path_actual(
-                    current_pos, waypoint, path_nodes
-                )
-                if segment_path:
-                    final_path.extend(segment_path[1:])
-                    total_distance += segment_dist
-                    current_pos = waypoint
-
-            # 到达终点
-            end_path, end_dist = self.dijkstra_shortest_path_actual(
-                current_pos, end, path_nodes
-            )
-            if end_path:
-                final_path.extend(end_path[1:])
-                total_distance += end_dist
-
-            return final_path, total_distance
+        # ---------- 6. 与原顺序比较 ----------
+        if new_length < original_length - 1e-6:  # 仅在明显更优时采用
+            return order, new_length
+        else:
+            return unique_nodes, original_length
 
     def dijkstra_shortest_path(self, start: str, end: str, avoid_nodes: set = None) -> Tuple[list, float]:
         """原有的Dijkstra算法，使用adjusted_value"""
